@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YML Blog Sorter</title>
+</head>
+<body>
+  <h1>YML Blog Sorter</h1>
+  <label for="input">Input:</label>
+  <br>
+  <textarea id="input" rows="10" cols="80"></textarea>
+  <br>
+  <button onclick="sortBlogs()">Sort Blogs</button>
+  <br>
+  <label for="output">Output:</label>
+  <br>
+  <textarea id="output" rows="10" cols="80" readonly></textarea>
+
+  <script>
+    function parseYML(ymlText) {
+      const lines = ymlText.trim().split("\n");
+      const blogs = [];
+
+      let currentBlog = null;
+
+      for (const line of lines) {
+        if (line.startsWith('- local:')) {
+          if (currentBlog) {
+            blogs.push(currentBlog);
+          }
+          currentBlog = { content: [] };
+          currentBlog.content.push(line);
+        } else if (currentBlog) {
+          currentBlog.content.push(line);
+
+          if (line.startsWith('  date:')) {
+            const dateStr = line.split('  date:')[1].trim();
+            currentBlog.date = new Date(dateStr);
+          }
+        }
+      }
+
+      if (currentBlog) {
+        blogs.push(currentBlog);
+      }
+
+      return blogs;
+    }
+
+    function sortBlogs() {
+      const input = document.getElementById('input').value;
+      const blogs = parseYML(input);
+      blogs.sort((a, b) => a.date - b.date);
+
+      const sortedOutput = blogs.map(blog => blog.content.join('\n')).join('\n');
+      document.getElementById('output').value = sortedOutput;
+    }
+  </script>
+</body>
+</html>
