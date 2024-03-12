@@ -64,7 +64,8 @@
                         .replace(/([A-Za-z])([\u4e00-\u9fa5])/g, '$1 $2')
                         .replace(/（/g, ' (')
                         .replace(/）/g, ') ')
-                        .replace(/\[([^\]]+?)\]\(((?!http:\/\/|https:\/\/).+?)\)/g, ''); // 删除不包含 http:// 或 https:// 的链接
+                        .replace(/\[([^\]]+?)\]\(((?!http:\/\/|https:\/\/).+?)\)/g, '')
+                        .replace(/https:\/\/huggingface\.co\//g, 'https://hf.co/'); // 删除不包含 http:// 或 https:// 的链接
 
                     let urls = [];
                     let modifiedParagraph = '';
