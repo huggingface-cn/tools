@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Formatter for WeChat Articles</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #fafafa;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+        }
+
+        button {
+            margin-top: 10px;
+        }
+    </style>
+    <script>
+        // 确保用户在刷新页面前得到提醒
+        window.onbeforeunload = function () {
+            return "确定要离开此页面吗？未保存的更改将会丢失。";
+        };
+
+        function transformMarkdown() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            output.value = cleanAndTransformMarkdown(input);
+        }
+
+        function copyToClipboard() {
+            const output = document.getElementById('output');
+            output.select();
+            document.execCommand('copy');
+            alert('内容已复制到剪贴板！');
+        }
+
+        function cleanAndTransformMarkdown(markdown) {
+            const blocks = markdown.split(/(```[\s\S]*?```)/);
+            let result = [];
+
+            blocks.forEach((block, index) => {
+                if (index % 2 === 1) {
+                    result.push(block);
+                    return;
+                }
+
+                const paragraphs = block.split(/\n\n/).map(para => {
+                    // 跳过代码块和图片链接
+                    if (para.startsWith('```') || para.match(/^!\[.*\]\(.*\)$/)) {
+                        return para;
+                    }
+
+                    // 格式清洗
+                    para = para.replace(/(\d)([\u4e00-\u9fa5])/g, '$1 $2')
+                        .replace(/([\u4e00-\u9fa5])(\d)/g, '$1 $2')
+                        .replace(/([\u4e00-\u9fa5])([A-Za-z])/g, '$1 $2')
+                        .replace(/([A-Za-z])([\u4e00-\u9fa5])/g, '$1 $2')
+                        .replace(/（/g, ' (')
+                        .replace(/）/g, ') ')
+                        .replace(/\[([^\]]+?)\]\(((?!http:\/\/|https:\/\/).+?)\)/g, ''); // 删除不包含 http:// 或 https:// 的链接
+
+                    let urls = [];
+                    let modifiedParagraph = '';
+                    const lines = para.split('\n');
+                    lines.forEach(line => {
+                        line = line.replace(/[*_`]/g, ''); // 移除Markdown格式符号
+                        line = line.replace(/\[([^\]]+?)\]\((https?:\/\/[^()]+?)\)/g, (match, p1, p2) => {
+                            if (p2.includes('mp.weixin.qq.com') || match.startsWith('!')) return match;
+
+                            // 清理链接文本中的Markdown格式
+                            const cleanText = p1.replace(/`|\*\*/g, '');
+
+                            if (line.match(/^\s*[-\d\.]+\s*/)) { // 列表项中的链接
+                                return `<url-text>${cleanText}</url-text><url>${p2}</url>`;
+                            } else {
+                                // 段落中的链接，收集后在段落后显示
+                                urls.push(`- <url-text-note>${cleanText}</url-text-note><url>${p2}</url>`);
+                                return `<url-text>${cleanText}</url-text>`;
+                            }
+                        });
+                        modifiedParagraph += line + '\n';
+                    });
+
+                    // 对于非列表项的段落，将显性URL添加到段落后
+                    if (urls.length > 0 && !para.trim().startsWith("-")) {
+                        modifiedParagraph += '\n' + urls.join('\n');
+                    }
+
+                    return modifiedParagraph.trim();
+                });
+
+                result.push(paragraphs.join('\n\n'));
+            });
+
+            return result.join('');
+        }
+
+    </script>
+</head>
+
+<body>
+    <h2>Markdown Formatter for WeChat Articles</h2>
+    <p>此工具执行以下转换：</p>
+    <ul>
+        <li>加空格</li>
+        <li>将非微信公众号链接转换为显性链接，并展示。</li>
+        <li>url 包裹链接、url-text 包裹原文中的链接文本、url-text-note 包裹显性 URL 的链接文本。</li>
+        <li>需要在 mdnice 里使用 #nice url 等，自定义这三个标签的行为</li>
+        <li>原文中的链接会被清除，谨慎使用</li>
+        <li>源码、Bug 请在 <a href="https://github.com/huggingface-cn/tools">这里提交</a></li>
+        <li>本页短链接：<a href="https://hf.link/wxmd">https://hf.link/wxmd</a></li>
+    </ul>
+    <textarea id="input" placeholder="在此粘贴Markdown内容"></textarea>
+    <button onclick="transformMarkdown()">转换</button>
+    <textarea id="output" placeholder="转换后的内容将出现在这里"></textarea>
+    <button onclick="copyToClipboard()">复制内容</button>
+
+</body>
+
+</html>
