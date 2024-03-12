@@ -52,8 +52,8 @@
                 }
 
                 const paragraphs = block.split(/\n\n/).map(para => {
-                    // 跳过代码块和图片链接
-                    if (para.startsWith('```') || para.match(/^!\[.*\]\(.*\)$/)) {
+                    // 跳过代码块
+                    if (para.startsWith('```')) {
                         return para;
                     }
 
@@ -64,32 +64,32 @@
                         .replace(/([A-Za-z])([\u4e00-\u9fa5])/g, '$1 $2')
                         .replace(/（/g, ' (')
                         .replace(/）/g, ') ')
-                        .replace(/\[([^\]]+?)\]\(((?!http:\/\/|https:\/\/).+?)\)/g, '')
-                        .replace(/https:\/\/huggingface\.co\//g, 'https://hf.co/'); // 删除不包含 http:// 或 https:// 的链接
+                        .replace(/\[([^\]]+?)\]\(((?!http:\/\/|https:\/\/).+?)\)/g, '') // 删除不包含 http:// 或 https:// 的链接
+                        .replace(/https:\/\/huggingface\.co\//g, 'https://hf.co/'); // 替换链接
 
                     let urls = [];
                     let modifiedParagraph = '';
                     const lines = para.split('\n');
                     lines.forEach(line => {
-                        line = line.replace(/[*_`]/g, ''); // 移除Markdown格式符号
-                        line = line.replace(/\[([^\]]+?)\]\((https?:\/\/[^()]+?)\)/g, (match, p1, p2) => {
-                            if (p2.includes('mp.weixin.qq.com') || match.startsWith('!')) return match;
-
-                            // 清理链接文本中的Markdown格式
-                            const cleanText = p1.replace(/`|\*\*/g, '');
-
-                            if (line.match(/^\s*[-\d\.]+\s*/)) { // 列表项中的链接
-                                return `<url-text>${cleanText}</url-text><url>${p2}</url>`;
-                            } else {
-                                // 段落中的链接，收集后在段落后显示
-                                urls.push(`- <url-text-note>${cleanText}</url-text-note><url>${p2}</url>`);
-                                return `<url-text>${cleanText}</url-text>`;
-                            }
-                        });
+                        if (!line.trim().startsWith('!')) { // 排除图片链接
+                            line = line.replace(/[*_`]/g, ''); // 移除Markdown格式符号
+                            line = line.replace(/\[([^\]]+?)\]\((https?:\/\/[^()]+?)\)/g, (match, p1, p2) => {
+                                if (!p2.includes('mp.weixin.qq.com')) {
+                                    const cleanText = p1.replace(/`|\*\*/g, '');
+                                    if (line.match(/^\s*[-\d\.]+\s*/)) { // 列表项中的链接
+                                        return `<url-text>${cleanText}</url-text><url>${p2}</url>`;
+                                    } else {
+                                        urls.push(`- <url-text-note>${cleanText}</url-text-note><url>${p2}</url>`);
+                                        return `<url-text>${cleanText}</url-text>`;
+                                    }
+                                }
+                                return match;
+                            });
+                        }
                         modifiedParagraph += line + '\n';
                     });
 
-                    // 对于非列表项的段落，将显性URL添加到段落后
+                    // 对于非列表项的段落，添加显性URL到段落后
                     if (urls.length > 0 && !para.trim().startsWith("-")) {
                         modifiedParagraph += '\n' + urls.join('\n');
                     }
