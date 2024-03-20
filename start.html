@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh">
-  <head>
+<head>
     <meta charset="UTF-8" >
     <meta name="viewport" content="width=device-width, initial-scale=1.0" >
     <title>Hugging Face 博客翻译辅助工具</title>
@@ -10,29 +10,41 @@
     <script src="https://cdn.staticfile.net/js-yaml/4.1.0/js-yaml.min.js"></script>
     <script src="https://cdn.staticfile.net/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.staticfile.net/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  </head>
-  <body>
+</head>
+<body>
     <div class="container">
-      <h2>Hugging Face 博客翻译辅助工具</h2>
-      <div class="form-group">
-        <label for="blogUrl">要翻译的博客链接：</label>
-        <input type="url" id="blogUrl" name="blogUrl" >
-        <button type="button" id="fetchBlogInfo">获取博客信息</button>
-      </div>
-      <div id="blogDetails" class="blog-details hidden">
-        <!-- 博客详情将在这里显示 -->
-      </div>
-      <div id="translationInputs" class="hidden">
+        <h2>Hugging Face 博客翻译辅助工具</h2>
         <div class="form-group">
-          <label for="chineseTitle">博客中文标题：</label>
-          <input type="text" id="chineseTitle" name="chineseTitle" >
+            <label for="blogUrl">要翻译的博客链接：</label>
+            <input type="url" id="blogUrl" name="blogUrl" >
+            <button type="button" id="fetchBlogInfo">获取博客信息</button>
         </div>
-        <div class="form-group">
-          <label for="hfUsername">HF 用户名：</label>
-          <input type="text" id="hfUsername" name="hfUsername" >
+        <div id="blogDetails" class="blog-details hidden">
+            <!-- 博客详情将在这里显示 -->
         </div>
-        <button type="button" id="downloadFile">下载待翻译的文件</button>
-      </div>
+        <div id="translationInputs" class="hidden">
+            <div class="form-group">
+                <label for="chineseTitle">博客中文标题：</label>
+                <input type="text" id="chineseTitle" name="chineseTitle" >
+            </div>
+            <div class="form-group">
+                <label for="hfUsername">HF 用户名：</label>
+                <input type="text" id="hfUsername" name="hfUsername" >
+            </div>
+            <button type="button" id="downloadFile">下载待翻译的文件</button>
+        </div>
+        <!-- 工具使用方法 -->
+        <div id="toolUsage" class="tool-usage">
+            <h3>工具使用方法：</h3>
+            <ol>
+                <li>输入 HF 博客链接。</li>
+                <li>翻译标题。</li>
+                <li>输入自己的 HF 用户名。</li>
+                <li>下载生成的文件。</li>
+                <li>在自己 fork 的 repo 里直接将 zh/ 文件夹的内容复制到 zh/ 目录下，_blog.yml 文件可以直接覆盖。</li>
+                <li>翻译 .md 文件，提交 PR 给 <a href="https://github.com/huggingface-cn/hf-blog-translation">https://github.com/huggingface-cn/hf-blog-translation</a>。</li>
+            </ol>
+        </div>
     </div>
     <script>var g = Object.defineProperty;
 var i = (t, n) => g(t, "name", {
@@ -135,5 +147,5 @@ function y(t, n, s) {
 `);
 }
 i(y, "modifyMdFile");</script>
-  </body>
+</body>
 </html>
