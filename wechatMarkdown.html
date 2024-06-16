@@ -72,7 +72,8 @@
                     const lines = para.split('\n');
                     lines.forEach(line => {
                         if (!line.trim().startsWith('!')) { // 排除图片链接
-                            line = line.replace(/[*_`]/g, ''); // 移除Markdown格式符号
+                            // 2024-06-16 暂时移除这个替换，避免删除英文单词中间的下划线 ("_")、加粗标记 ("**") 和行内代码块 ("``")。
+                            // line = line.replace(/[*_`]/g, ''); // 移除Markdown格式符号
                             line = line.replace(/\[([^\]]+?)\]\((https?:\/\/[^()]+?)\)/g, (match, p1, p2) => {
                                 if (!p2.includes('mp.weixin.qq.com')) {
                                     const cleanText = p1.replace(/`|\*\*/g, '');
