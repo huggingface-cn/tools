@@ -17,6 +17,9 @@ jobs:
         token: ${{ secrets.HF_SYNC_PAT }}  # 使用 PAT 访问目标 repo
         fetch-depth: 0  # 获取所有历史记录，确保能检查 PR 状态
 
+    - name: Set GH_TOKEN environment variable
+      run: echo "GH_TOKEN=${{ secrets.PERSONAL_ACCESS_TOKEN }}" >> $GITHUB_ENV
+
     - name: Check for open pull requests
       id: check_pr
       run: |
