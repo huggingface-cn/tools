@@ -20,7 +20,7 @@ jobs:
     - name: Check for open pull requests
       id: check_pr
       run: |
-        OPEN_PRS=$(gh pr list --repo huggingface-cn/hf-blog-translation" --state open --json number --jq '. | length')
+        OPEN_PRS=$(gh pr list --repo "huggingface-cn/hf-blog-translation" --state open --json number --jq '. | length')
         if [ "$OPEN_PRS" -gt 0 ]; then
           echo "There are open PRs, stopping sync."
           exit 0
