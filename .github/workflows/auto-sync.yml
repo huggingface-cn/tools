@@ -26,7 +26,7 @@ jobs:
     - name: Check for open pull requests to upstream repo
       id: check_pr
       run: |
-        OPEN_PRS=$(gh pr list --repo "huggingface/blog" --head "huggingface-cn:hf-blog-translation" --state open --json number --jq '. | length')
+        OPEN_PRS=$(gh pr list --repo "huggingface/blog" --state open --json headRepository --jq '.[] | select(.headRepository.name == "hf-blog-translation") | length')
         if [ "$OPEN_PRS" -gt 0 ]; then
           echo "There are open PRs to upstream, stopping sync."
           exit 1
