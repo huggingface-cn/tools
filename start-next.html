@@ -4,24 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hugging Face 博客翻译辅助工具</title>
-    <!-- React -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- 其他依赖 -->
     <script src="https://cdn.staticfile.net/axios/1.6.5/axios.min.js"></script>
     <script src="https://cdn.staticfile.net/js-yaml/4.1.0/js-yaml.min.js"></script>
     <script src="https://cdn.staticfile.net/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.staticfile.net/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <!-- Marked.js for Markdown preview -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Tailwind CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     
     <style>
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
             background-color: #f0f0f0;
+            line-height: 1.6;
         }
         .container {
             max-width: 1200px;
@@ -37,15 +31,17 @@
         label {
             display: block;
             margin-bottom: 5px;
+            font-weight: bold;
         }
         input[type="text"],
         input[type="url"] {
-            width: 100%;
+            width: 96%;
             padding: 8px;
             margin: 4px 0 8px;
             display: block;
             border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 14px;
         }
         button {
             background-color: #4CAF50;
@@ -55,59 +51,103 @@
             border-radius: 4px;
             cursor: pointer;
             margin: 5px;
+            font-size: 14px;
+            transition: background-color 0.3s;
         }
         button:hover {
             background-color: #45a049;
+        }
+        button#editOnline {
+            background-color: #2196F3;
+        }
+        button#editOnline:hover {
+            background-color: #1976D2;
+        }
+        button#saveEdit {
+            background-color: #FF9800;
+        }
+        button#saveEdit:hover {
+            background-color: #F57C00;
         }
         .blog-details {
             margin-top: 20px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            padding: 10px;
+            padding: 15px;
             background-color: #f9f9f9;
         }
         .detail-item {
             margin-bottom: 10px;
+            line-height: 1.4;
         }
         .detail-item strong {
             font-weight: bold;
+            margin-right: 5px;
         }
         .hidden {
-            display: none;
+            display: none !important;
         }
         .editor-container {
             margin-top: 20px;
             border: 1px solid #ddd;
             border-radius: 5px;
+            background-color: #fff;
         }
         .editor-toolbar {
             padding: 10px;
             border-bottom: 1px solid #ddd;
             background-color: #f5f5f5;
+            border-radius: 5px 5px 0 0;
         }
         .editor-content {
             display: flex;
-            min-height: 500px;
+            height: 600px;
         }
         .editor-input {
             flex: 1;
-            padding: 10px;
+            padding: 15px;
             border: none;
             resize: none;
-            font-family: monospace;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            border-right: 1px solid #ddd;
+        }
+        .editor-input:focus {
+            outline: none;
         }
         .preview-pane {
             flex: 1;
-            padding: 10px;
-            border-left: 1px solid #ddd;
+            padding: 15px;
             overflow-y: auto;
             background-color: #fff;
         }
+        .preview-pane img {
+            max-width: 100%;
+        }
         .tool-usage {
             margin-top: 30px;
-            padding: 15px;
+            padding: 20px;
             background-color: #f8f9fa;
             border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+        .tool-usage h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .tool-usage ol {
+            padding-left: 20px;
+        }
+        .tool-usage li {
+            margin-bottom: 8px;
+        }
+        .tool-usage a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .tool-usage a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -133,13 +173,13 @@
                 <label for="hfUsername">HF 用户名：</label>
                 <input type="text" id="hfUsername" name="hfUsername">
             </div>
-            <button type="button" id="editOnline" class="bg-blue-500 hover:bg-blue-600">在线编辑</button>
-            <button type="button" id="downloadFile" class="bg-green-500 hover:bg-green-600">下载文件</button>
+            <button type="button" id="editOnline">在线编辑</button>
+            <button type="button" id="downloadFile">下载文件</button>
         </div>
 
         <div id="editorContainer" class="editor-container hidden">
             <div class="editor-toolbar">
-                <button type="button" id="saveEdit" class="bg-blue-500 hover:bg-blue-600">保存修改</button>
+                <button type="button" id="saveEdit">保存修改</button>
             </div>
             <div class="editor-content">
                 <textarea id="markdownEditor" class="editor-input" placeholder="在这里编辑 Markdown 内容..."></textarea>
@@ -147,7 +187,6 @@
             </div>
         </div>
 
-        <!-- 工具使用方法 -->
         <div class="tool-usage">
             <h3>工具使用方法：</h3>
             <ol>
@@ -164,8 +203,8 @@
     </div>
 
     <script>
-        let blogContent = '';
-        let isEditing = false;
+        let originalBlogContent = ''; // 存储原始博客内容
+        let modifiedBlogContent = ''; // 存储修改后的博客内容
 
         // 自动加载上次使用的用户名
         document.getElementById('hfUsername').value = localStorage.getItem('hfUsername') || '';
@@ -216,7 +255,9 @@
         async function getBlogContent() {
             try {
                 let response = await axios.get(`https://raw.githubusercontent.com/huggingface/blog/main/${document.currentBlog.local}.md`);
-                blogContent = response.data;
+                originalBlogContent = response.data;
+                // 初始化修改后的内容为原始内容
+                modifiedBlogContent = originalBlogContent;
             } catch (error) {
                 console.error('获取博客内容失败:', error);
                 alert('获取博客内容时发生错误！');
@@ -242,8 +283,21 @@
         }
 
         document.getElementById('editOnline').addEventListener('click', function() {
+            const chineseTitle = document.getElementById('chineseTitle').value;
+            const hfUsername = document.getElementById('hfUsername').value;
+
+            if (!chineseTitle || !hfUsername) {
+                alert('请先填写中文标题和用户名！');
+                return;
+            }
+
+            // 如果还没有修改过，先生成修改后的内容
+            if (modifiedBlogContent === originalBlogContent) {
+                modifiedBlogContent = modifyMdFile(originalBlogContent, chineseTitle, hfUsername);
+            }
+
             document.getElementById('editorContainer').classList.remove('hidden');
-            document.getElementById('markdownEditor').value = blogContent;
+            document.getElementById('markdownEditor').value = modifiedBlogContent;
             updatePreview();
         });
 
@@ -255,7 +309,7 @@
         }
 
         document.getElementById('saveEdit').addEventListener('click', function() {
-            blogContent = document.getElementById('markdownEditor').value;
+            modifiedBlogContent = document.getElementById('markdownEditor').value;
             document.getElementById('editorContainer').classList.add('hidden');
         });
 
@@ -280,9 +334,15 @@
                 const modifiedYml = modifyYmlFile(blogYmlResponse.data, document.currentBlog, chineseTitle);
                 zhFolder.file('_blog.yml', modifiedYml);
 
-                // 获取并修改 md 文件
-                const mdContent = modifyMdFile(blogContent, chineseTitle, hfUsername);
-                zhFolder.file(`${document.currentBlog.local}.md`, mdContent);
+                // 使用已修改的内容或生成新的修改内容
+                let finalContent;
+                if (modifiedBlogContent === originalBlogContent) {
+                    finalContent = modifyMdFile(originalBlogContent, chineseTitle, hfUsername);
+                } else {
+                    finalContent = modifiedBlogContent;
+                }
+                
+                zhFolder.file(`${document.currentBlog.local}.md`, finalContent);
 
                 // 生成并下载 zip 文件
                 zip.generateAsync({ type: 'blob' })
