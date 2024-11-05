@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hugging Face 博客翻译辅助工具</title>
+    <!-- React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 其他依赖 -->
+    <script src="https://cdn.staticfile.net/axios/1.6.5/axios.min.js"></script>
+    <script src="https://cdn.staticfile.net/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdn.staticfile.net/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.staticfile.net/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Marked.js for Markdown preview -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0 8px;
+            display: block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .blog-details {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .detail-item {
+            margin-bottom: 10px;
+        }
+        .detail-item strong {
+            font-weight: bold;
+        }
+        .hidden {
+            display: none;
+        }
+        .editor-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .editor-toolbar {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            background-color: #f5f5f5;
+        }
+        .editor-content {
+            display: flex;
+            min-height: 500px;
+        }
+        .editor-input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            resize: none;
+            font-family: monospace;
+        }
+        .preview-pane {
+            flex: 1;
+            padding: 10px;
+            border-left: 1px solid #ddd;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+        .tool-usage {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Hugging Face 博客翻译辅助工具</h2>
+        <div class="form-group">
+            <label for="blogUrl">要翻译的博客链接：</label>
+            <input type="url" id="blogUrl" name="blogUrl">
+            <button type="button" id="fetchBlogInfo">获取博客信息</button>
+        </div>
+        
+        <div id="blogDetails" class="blog-details hidden">
+            <!-- 博客详情将在这里显示 -->
+        </div>
+        
+        <div id="translationInputs" class="hidden">
+            <div class="form-group">
+                <label for="chineseTitle">博客中文标题：</label>
+                <input type="text" id="chineseTitle" name="chineseTitle">
+            </div>
+            <div class="form-group">
+                <label for="hfUsername">HF 用户名：</label>
+                <input type="text" id="hfUsername" name="hfUsername">
+            </div>
+            <button type="button" id="editOnline" class="bg-blue-500 hover:bg-blue-600">在线编辑</button>
+            <button type="button" id="downloadFile" class="bg-green-500 hover:bg-green-600">下载文件</button>
+        </div>
+
+        <div id="editorContainer" class="editor-container hidden">
+            <div class="editor-toolbar">
+                <button type="button" id="saveEdit" class="bg-blue-500 hover:bg-blue-600">保存修改</button>
+            </div>
+            <div class="editor-content">
+                <textarea id="markdownEditor" class="editor-input" placeholder="在这里编辑 Markdown 内容..."></textarea>
+                <div id="previewPane" class="preview-pane"></div>
+            </div>
+        </div>
+
+        <!-- 工具使用方法 -->
+        <div class="tool-usage">
+            <h3>工具使用方法：</h3>
+            <ol>
+                <li>输入 HF 博客链接</li>
+                <li>翻译标题</li>
+                <li>输入自己的 HF 用户名</li>
+                <li>可以选择在线编辑内容</li>
+                <li>下载生成的文件</li>
+                <li>在自己 fork 的 repo 里直接将 zh/ 文件夹的内容复制到 zh/ 目录下，_blog.yml 文件可以直接覆盖</li>
+                <li>翻译 .md 文件，提交 PR 给 <a href="https://github.com/huggingface-cn/hf-blog-translation">https://github.com/huggingface-cn/hf-blog-translation</a></li>
+            </ol>
+            本页面地址: <a href="https://hf.link/start">https://hf.link/start</a>，<a href="https://github.com/huggingface-cn/tools/issues">提交 issue</a>
+        </div>
+    </div>
+
+    <script>
+        let blogContent = '';
+        let isEditing = false;
+
+        // 自动加载上次使用的用户名
+        document.getElementById('hfUsername').value = localStorage.getItem('hfUsername') || '';
+
+        document.getElementById('fetchBlogInfo').addEventListener('click', function() {
+            let blogUrl = document.getElementById('blogUrl').value;
+            let blogId = blogUrl.split('/').pop();
+
+            axios.get('https://raw.githubusercontent.com/huggingface/blog/main/zh/_blog.yml')
+                .then(function(response) {
+                    if (jsyaml.load(response.data).find(blog => blog.local === blogId)) {
+                        showZhTranslationDone();
+                    } else {
+                        return axios.get('https://raw.githubusercontent.com/huggingface/blog/main/_blog.yml');
+                    }
+                })
+                .then(function(response) {
+                    if (!response) return;
+                    let blogs = jsyaml.load(response.data);
+                    let blog = blogs.find(b => b.local === blogId);
+                    if (blog) {
+                        displayBlogDetails(blog);
+                    } else {
+                        showNotFoundMessage();
+                    }
+                })
+                .catch(function(error) {
+                    console.error(error);
+                    alert('获取博客信息时发生错误！');
+                });
+        });
+
+        function displayBlogDetails(blog) {
+            document.currentBlog = blog;
+            let detailsDiv = document.getElementById('blogDetails');
+            if (detailsDiv) {
+                detailsDiv.classList.remove('hidden');
+                detailsDiv.innerHTML = `
+                    <div class="detail-item"><strong>标题:</strong> ${blog.title}</div>
+                    <div class="detail-item"><strong>作者:</strong> ${blog.author}</div>
+                    <div class="detail-item"><strong>发布时间:</strong> ${blog.date}</div>
+                `;
+                document.getElementById('translationInputs').classList.remove('hidden');
+                getBlogContent();
+            }
+        }
+
+        async function getBlogContent() {
+            try {
+                let response = await axios.get(`https://raw.githubusercontent.com/huggingface/blog/main/${document.currentBlog.local}.md`);
+                blogContent = response.data;
+            } catch (error) {
+                console.error('获取博客内容失败:', error);
+                alert('获取博客内容时发生错误！');
+            }
+        }
+
+        function showNotFoundMessage() {
+            let detailsDiv = document.getElementById('blogDetails');
+            detailsDiv.classList.remove('hidden');
+            detailsDiv.innerHTML = `
+                <div class="detail-item">请检查博客链接，如果无误，请在群里反馈。</div>
+            `;
+            document.getElementById('translationInputs').classList.add('hidden');
+        }
+
+        function showZhTranslationDone() {
+            let detailsDiv = document.getElementById('blogDetails');
+            detailsDiv.classList.remove('hidden');
+            detailsDiv.innerHTML = `
+                <div class="detail-item">本篇博客已完成中文翻译，请选择其他博客内容。</div>
+            `;
+            document.getElementById('translationInputs').classList.add('hidden');
+        }
+
+        document.getElementById('editOnline').addEventListener('click', function() {
+            document.getElementById('editorContainer').classList.remove('hidden');
+            document.getElementById('markdownEditor').value = blogContent;
+            updatePreview();
+        });
+
+        document.getElementById('markdownEditor').addEventListener('input', updatePreview);
+
+        function updatePreview() {
+            const editorContent = document.getElementById('markdownEditor').value;
+            document.getElementById('previewPane').innerHTML = marked.parse(editorContent);
+        }
+
+        document.getElementById('saveEdit').addEventListener('click', function() {
+            blogContent = document.getElementById('markdownEditor').value;
+            document.getElementById('editorContainer').classList.add('hidden');
+        });
+
+        document.getElementById('downloadFile').addEventListener('click', async function() {
+            const chineseTitle = document.getElementById('chineseTitle').value;
+            const hfUsername = document.getElementById('hfUsername').value;
+
+            if (!chineseTitle || !hfUsername) {
+                alert('请填写中文标题和用户名！');
+                return;
+            }
+
+            // 保存用户名到本地存储
+            localStorage.setItem('hfUsername', hfUsername);
+
+            const zip = new JSZip();
+            const zhFolder = zip.folder('zh');
+
+            try {
+                // 获取并修改 _blog.yml
+                const blogYmlResponse = await axios.get('https://raw.githubusercontent.com/huggingface-cn/hf-blog-translation/main/zh/_blog.yml');
+                const modifiedYml = modifyYmlFile(blogYmlResponse.data, document.currentBlog, chineseTitle);
+                zhFolder.file('_blog.yml', modifiedYml);
+
+                // 获取并修改 md 文件
+                const mdContent = modifyMdFile(blogContent, chineseTitle, hfUsername);
+                zhFolder.file(`${document.currentBlog.local}.md`, mdContent);
+
+                // 生成并下载 zip 文件
+                zip.generateAsync({ type: 'blob' })
+                    .then(function(content) {
+                        saveAs(content, `${document.currentBlog.local}.zip`);
+                    });
+            } catch (error) {
+                console.error('生成文件时出错:', error);
+                alert('生成文件时出错，请检查网络连接或输入的信息。');
+            }
+        });
+
+        function modifyYmlFile(ymlContent, blog, chineseTitle) {
+            let blogs = jsyaml.load(ymlContent);
+            let blogIndex = blogs.findIndex(b => b.local === blog.local);
+            
+            if (blogIndex !== -1) {
+                blogs[blogIndex].title = chineseTitle;
+            } else {
+                let newBlog = {
+                    ...blog,
+                    title: chineseTitle
+                };
+                blogs.push(newBlog);
+            }
+
+            let newYml = jsyaml.dump(blogs, { lineWidth: -1 });
+            newYml = newYml.replace(/(\n- local:)/g, '\n$1').trim();
+            return newYml;
+        }
+
+        function modifyMdFile(content, chineseTitle, username) {
+            let lines = content.split('\n');
+            let inFrontMatter = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i] === '---') {
+                    if (!inFrontMatter) {
+                        inFrontMatter = true;
+                    } else {
+                        lines.splice(i, 0, `translators:\n- user: ${username}`);
+                        inFrontMatter = false;
+                        break;
+                    }
+                } else if (inFrontMatter && lines[i].startsWith('title:')) {
+                    lines[i] = `title: "${chineseTitle}"`;
+                }
+            }
+            
+            return lines.join('\n');
+        }
+    </script>
+</body>
+</html>
