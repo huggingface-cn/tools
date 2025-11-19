@@ -162,10 +162,11 @@
     }
 
     // 显示博客详情
-    function displayBlogDetails(frontmatter, blogId) {
+    function displayBlogDetails(frontmatter, blogId, originalBlogMeta) {
         currentBlogData = {
             frontmatter: frontmatter,
-            blogId: blogId
+            blogId: blogId,
+            originalMeta: originalBlogMeta
         };
         
         let blogDetails = document.getElementById("blogDetails");
@@ -180,9 +181,20 @@
                 authorInfo = frontmatter.author;
             }
             
+            // 处理日期信息
+            let dateInfo = originalBlogMeta?.date || '未找到日期';
+            
+            // 处理标签信息
+            let tagsInfo = '无';
+            if (originalBlogMeta?.tags && originalBlogMeta.tags.length > 0) {
+                tagsInfo = originalBlogMeta.tags.join(', ');
+            }
+            
             blogDetails.innerHTML = `
                 <div class="detail-item"><strong>标题:</strong> ${frontmatter.title || '未找到标题'}</div>
                 <div class="detail-item"><strong>作者:</strong> ${authorInfo}</div>
+                <div class="detail-item"><strong>日期:</strong> ${dateInfo}</div>
+                <div class="detail-item"><strong>标签:</strong> ${tagsInfo}</div>
                 <div class="detail-item"><strong>文件名:</strong> ${blogId}.md</div>
             `;
             document.getElementById("translationInputs").classList.remove("hidden");
@@ -234,12 +246,17 @@
                 return;
             }
             
+            // 获取原始英文 _blog.yml 以获取 date 和 tags
+            let enBlogResponse = await axios.get("https://raw.githubusercontent.com/huggingface/blog/main/_blog.yml");
+            let enBlogs = jsyaml.load(enBlogResponse.data);
+            let originalBlogMeta = enBlogs.find(blog => blog.local === blogId);
+            
             // 获取原始博客内容
             let mdResponse = await axios.get(`https://raw.githubusercontent.com/huggingface/blog/main/${blogId}.md`);
             let frontmatter = extractFrontmatter(mdResponse.data);
             
             if (frontmatter) {
-                displayBlogDetails(frontmatter, blogId);
+                displayBlogDetails(frontmatter, blogId, originalBlogMeta);
             } else {
                 showNotFoundMessage();
             }
@@ -253,32 +270,44 @@
         }
     });
 
-    // 修改 YAML 文件
-    function modifyYmlFile(ymlContent, blogId) {
+    // 修改 YAML 文件，保持与上游格式完全一致
+    function modifyYmlFile(ymlContent, blogId, originalMeta) {
         let blogs = jsyaml.load(ymlContent);
         
         // 检查是否已存在
         let existingIndex = blogs.findIndex(b => b.local === blogId);
         
         if (existingIndex === -1) {
-            // 添加新条目（新格式只需要 local, date, tags）
+            // 创建新条目，使用原始的 date 和 tags
             let newEntry = {
                 local: blogId
             };
             
-            // 从 _blog.yml 原文件中可能获取 date 和 tags
-            // 如果没有，使用默认值
+            // 添加 date（如果存在）
+            if (originalMeta?.date) {
+                newEntry.date = originalMeta.date;
+            }
+            
+            // 添加 tags（如果存在）
+            if (originalMeta?.tags && originalMeta.tags.length > 0) {
+                newEntry.tags = originalMeta.tags;
+            }
+            
             blogs.push(newEntry);
         }
         
         // 生成 YAML，保持格式整洁
         let modifiedYml = jsyaml.dump(blogs, { 
             lineWidth: -1,
-            noRefs: true
+            noRefs: true,
+            flowLevel: -1  // 确保 tags 使用列表格式
         });
         
-        // 在每个条目之间添加空行
-        return modifiedYml.replace(/(\n- local:)/g, '\n$1').trim();
+        // 在每个条目之间添加空行（匹配上游格式）
+        modifiedYml = modifiedYml.replace(/^- local:/gm, '\n- local:');
+        
+        // 确保文件开头没有多余的空行
+        return modifiedYml.trim();
     }
 
     // 修改 Markdown 文件
@@ -339,13 +368,14 @@
         }
         
         let blogId = currentBlogData.blogId;
+        let originalMeta = currentBlogData.originalMeta;
         let zip = new JSZip();
         let zhFolder = zip.folder("zh");
         
         try {
             // 获取并修改 yml 文件
             let ymlResponse = await axios.get("https://raw.githubusercontent.com/huggingface-cn/hf-blog-translation/main/zh/_blog.yml");
-            let modifiedYml = modifyYmlFile(ymlResponse.data, blogId);
+            let modifiedYml = modifyYmlFile(ymlResponse.data, blogId, originalMeta);
             zhFolder.file("_blog.yml", modifiedYml);
             
             // 获取并修改 MD 文件
